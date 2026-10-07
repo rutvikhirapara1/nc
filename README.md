@@ -37,3 +37,12 @@ The middleware protects dashboard/vendor/bill routes and redirects unauthenticat
 ### Vercel environment variables
 
 Add `SUPABASE_URL` and `SUPABASE_ANON_KEY` in Vercel. The app keeps these names private on the server and exposes only the Supabase URL + anon/publishable key through `/api/supabase-config` for browser authentication and database access. Do not use the Supabase `service_role` key.
+
+## Vercel environment variables
+
+Add these variables in **Development, Preview, and Production**:
+
+- `SUPABASE_URL` — your Supabase project URL
+- `SUPABASE_ANON_KEY` — your Supabase anon/publishable key
+
+Do not commit a real `.env` file or Supabase service-role key to GitHub.

@@ -1,17 +1,35 @@
 import { createBrowserClient } from '@supabase/ssr';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-let clientPromise: ReturnType<typeof createBrowserClient> | null = null;
+let clientPromise: Promise<SupabaseClient> | null = null;
 
-async function getConfig() {
+async function getConfig(): Promise<{ url: string; anonKey: string }> {
   const response = await fetch('/api/supabase-config', { cache: 'no-store' });
-  if (!response.ok) throw new Error('Unable to load Supabase configuration.');
-  return response.json() as Promise<{ url: string; anonKey: string }>;
+
+  if (!response.ok) {
+    throw new Error(
+      'Supabase configuration is unavailable. Add SUPABASE_URL and SUPABASE_ANON_KEY to the Vercel environment.'
+    );
+  }
+
+  const config = (await response.json()) as Partial<{
+    url: string;
+    anonKey: string;
+  }>;
+
+  if (!config.url || !config.anonKey) {
+    throw new Error('Invalid Supabase configuration.');
+  }
+
+  return { url: config.url, anonKey: config.anonKey };
 }
 
-export async function createClient() {
-  if (clientPromise) return clientPromise;
+export function createClient(): Promise<SupabaseClient> {
+  if (!clientPromise) {
+    clientPromise = getConfig().then(({ url, anonKey }) =>
+      createBrowserClient(url, anonKey)
+    );
+  }
 
-  const { url, anonKey } = await getConfig();
-  clientPromise = createBrowserClient(url, anonKey);
   return clientPromise;
 }
