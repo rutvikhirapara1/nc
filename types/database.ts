@@ -1,0 +1,2 @@
+export type Vendor={id:string;user_id:string;name:string;gst_number:string|null;contact_person:string|null;phone:string|null;email:string|null;default_credit_days:number;active:boolean;created_at:string};
+export type Bill={id:string;user_id:string;vendor_id:string;po_number:string|null;bill_number:string;bill_date:string;credit_period:number;due_date:string;amount:number;status:'pending'|'paid';paid_date:string|null;remarks:string|null;created_at:string;vendors?:Pick<Vendor,'name'>};
