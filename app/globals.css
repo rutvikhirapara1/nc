@@ -102,3 +102,6 @@ button, input, select, textarea { font: inherit; }
 }
 
 @keyframes shimmer { 100% { transform: translateX(100%); } }
+
+
+.field-label { display:block; font-size:.78rem; font-weight:600; color:#475569; }
