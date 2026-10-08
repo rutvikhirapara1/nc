@@ -34,6 +34,7 @@ export default function Bills(){
   const [bills,setBills]=useState<BillListItem[]>([]);
   const [vendors,setVendors]=useState<VendorListItem[]>([]);
   const [q,setQ]=useState('');
+  const [vendorFilter,setVendorFilter]=useState('all');
   const [filter,setFilter]=useState('all');
   const [form,setForm]=useState(emptyForm);
   const [loading,setLoading]=useState(true);
@@ -93,9 +94,10 @@ export default function Bills(){
     const d=dayDiff(b.due_date);
     const text=(`${b.bill_number} ${b.po_number||''} ${vendorName(b)}`).toLowerCase();
     const matches=text.includes(q.toLowerCase());
+    const matchesVendor=vendorFilter==='all'||b.vendor_id===vendorFilter;
     const f=filter==='all'||filter==='paid'&&b.status==='paid'||filter==='overdue'&&b.status==='pending'&&d<0||filter==='upcoming'&&b.status==='pending'&&d>=0&&d<=7;
-    return matches&&f;
-  }),[bills,q,filter]);
+    return matches&&matchesVendor&&f;
+  }),[bills,q,vendorFilter,filter]);
 
   const stats=useMemo(()=>{
     const pending=bills.filter(b=>b.status==='pending');
@@ -228,10 +230,21 @@ export default function Bills(){
       </div>
 
       <section className="mt-5 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-slate-100 p-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative w-full lg:max-w-md">
-            <Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
-            <input className="input pl-10" placeholder="Search bill, PO or vendor…" value={q} onChange={e=>setQ(e.target.value)}/>
+        <div className="flex flex-col gap-3 border-b border-slate-100 p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="relative w-full lg:max-w-md">
+              <Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
+              <input className="input pl-10" placeholder="Search bill, PO or vendor…" value={q} onChange={e=>setQ(e.target.value)}/>
+            </div>
+            <select
+              className="input w-full lg:w-64"
+              value={vendorFilter}
+              onChange={e=>setVendorFilter(e.target.value)}
+              aria-label="Filter bills by vendor"
+            >
+              <option value="all">All Vendors</option>
+              {vendors.map(v=><option key={v.id} value={v.id}>{v.name}</option>)}
+            </select>
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {[['all','All'],['overdue','Overdue'],['upcoming','Due in 7 days'],['paid','Paid']].map(([v,l])=>(
