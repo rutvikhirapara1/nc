@@ -2,6 +2,9 @@ import { withSupabase } from 'npm:@supabase/server@1';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? '';
 const REMINDER_FROM_EMAIL = Deno.env.get('REMINDER_FROM_EMAIL') ?? '';
+// Optional comma-separated override, e.g. "accounts@example.com,owner@example.com"
+// When set, every reminder is sent to these recipients. Otherwise the logged-in user's email is used.
+const REMINDER_RECIPIENT_EMAILS = Deno.env.get('REMINDER_RECIPIENT_EMAILS') ?? '';
 
 function istDate() {
   return new Intl.DateTimeFormat('en-CA', {
@@ -35,7 +38,7 @@ function htmlEscape(value: string) {
     .replaceAll("'", '&#039;');
 }
 
-async function sendEmail(to: string, subject: string, html: string) {
+async function sendEmail(to: string[], subject: string, html: string) {
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -44,7 +47,7 @@ async function sendEmail(to: string, subject: string, html: string) {
     },
     body: JSON.stringify({
       from: REMINDER_FROM_EMAIL,
-      to: [to],
+      to,
       subject,
       html,
     }),
@@ -147,7 +150,13 @@ export default {
           </div>
         `;
 
-        await sendEmail(ownerEmail, subject, html);
+        const recipients = REMINDER_RECIPIENT_EMAILS
+          .split(',')
+          .map((email) => email.trim())
+          .filter(Boolean);
+        const to = recipients.length > 0 ? recipients : [ownerEmail];
+
+        await sendEmail(to, subject, html);
 
         const field = daysUntilDue === 7 ? 'reminder_7_sent_at' : 'reminder_3_sent_at';
         const { error } = await ctx.supabaseAdmin
