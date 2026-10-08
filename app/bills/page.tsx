@@ -5,6 +5,7 @@ import {ArrowDownToLine,CalendarDays,CheckCircle2,Clock3,FileText,Plus,Search,Tr
 import {createClient} from '@/lib/supabase/client';
 import AppShell from '@/components/app-shell';
 import Modal from '@/components/modal';
+import ConfirmDialog from '@/components/confirm-dialog';
 import type {Bill,Vendor} from '@/types/database';
 import * as XLSX from 'xlsx';
 
@@ -44,6 +45,11 @@ export default function Bills(){
   const [showForm,setShowForm]=useState(false);
   const [editing,setEditing]=useState<string|null>(null);
   const [error,setError]=useState('');
+  const [confirmAction,setConfirmAction]=useState<
+    | {type:'payment';bill:BillListItem;nextStatus:'paid'|'pending'}
+    | {type:'delete';bill:BillListItem}
+    | null
+  >(null);
 
   async function load(){
     setLoading(true);
@@ -137,33 +143,54 @@ export default function Bills(){
     }finally{setSaving(false)}
   }
 
-  async function toggle(b:BillListItem){
+  function requestToggle(b:BillListItem){
     if(actionId)return;
-    setActionId(b.id);
-    try{
-      const sb=await createClient();
-      const {error}=await sb.from('bills').update({
-        status:b.status==='paid'?'pending':'paid',
-        paid_date:b.status==='pending'?new Date().toISOString().slice(0,10):null
-      }).eq('id',b.id);
-      if(error)throw error;
-      await load();
-    }catch(err){setError(err instanceof Error?err.message:'Unable to update payment status.')}
-    finally{setActionId(null)}
+    setConfirmAction({
+      type:'payment',
+      bill:b,
+      nextStatus:b.status==='paid'?'pending':'paid'
+    });
   }
 
-  async function remove(id:string){
+  function requestDelete(b:BillListItem){
     if(actionId)return;
-    const ok=window.confirm('Delete this bill? This cannot be undone.');
-    if(!ok)return;
-    setActionId(id);
+    setConfirmAction({type:'delete',bill:b});
+  }
+
+  async function confirmActionRun(){
+    if(!confirmAction||actionId)return;
+    const bill=confirmAction.bill;
+    setActionId(bill.id);
+    setError('');
+
     try{
       const sb=await createClient();
-      const {error}=await sb.from('bills').delete().eq('id',id);
-      if(error)throw error;
+
+      if(confirmAction.type==='delete'){
+        const {error}=await sb.from('bills').delete().eq('id',bill.id);
+        if(error)throw error;
+      }else{
+        const nextStatus=confirmAction.nextStatus;
+        const {error}=await sb.from('bills').update({
+          status:nextStatus,
+          paid_date:nextStatus==='paid'?new Date().toISOString().slice(0,10):null
+        }).eq('id',bill.id);
+        if(error)throw error;
+      }
+
+      setConfirmAction(null);
       await load();
-    }catch(err){setError(err instanceof Error?err.message:'Unable to delete bill.')}
-    finally{setActionId(null)}
+    }catch(err){
+      setError(
+        err instanceof Error
+          ? err.message
+          : confirmAction.type==='delete'
+            ? 'Unable to delete bill.'
+            : 'Unable to update payment status.'
+      );
+    }finally{
+      setActionId(null);
+    }
   }
 
   async function exportXlsx(){
@@ -293,8 +320,8 @@ export default function Bills(){
                       <td className="px-5 py-4"><span className={'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold '+(b.status==='paid'?'bg-emerald-50 text-emerald-700':'bg-indigo-50 text-indigo-700')}>{b.status==='paid'?'Paid':'Pending'}</span></td>
                       <td className="px-5 py-4"><div className="flex justify-end gap-2">
                         <button type="button" className="btn btn-muted inline-flex items-center gap-1.5 text-xs" onClick={()=>openEdit(b)}><Pencil size={14}/> Edit</button>
-                        <button type="button" className="btn btn-muted text-xs" disabled={!!actionId} onClick={()=>toggle(b)}>{actionId===b.id?'Updating…':b.status==='paid'?'Mark Pending':'Mark Paid'}</button>
-                        <button type="button" className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-red-700 transition hover:bg-red-100 disabled:opacity-50" disabled={!!actionId} onClick={()=>remove(b.id)} aria-label="Delete bill"><Trash2 size={14}/></button>
+                        <button type="button" className="btn btn-muted text-xs" disabled={!!actionId} onClick={()=>requestToggle(b)}>{actionId===b.id?'Updating…':b.status==='paid'?'Mark Pending':'Mark Paid'}</button>
+                        <button type="button" className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-red-700 transition hover:bg-red-100 disabled:opacity-50" disabled={!!actionId} onClick={()=>requestDelete(b)} aria-label="Delete bill"><Trash2 size={14}/></button>
                       </div></td>
                     </tr>;
                   })}
@@ -357,6 +384,17 @@ export default function Bills(){
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        action={confirmAction ? (
+          confirmAction.type==='delete'
+            ? {type:'delete',billNumber:confirmAction.bill.bill_number}
+            : {type:'payment',billNumber:confirmAction.bill.bill_number,nextStatus:confirmAction.nextStatus}
+        ) : null}
+        loading={!!actionId}
+        onCancel={()=>{if(!actionId)setConfirmAction(null)}}
+        onConfirm={confirmActionRun}
+      />
     </AppShell>
   );
 }
