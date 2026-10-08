@@ -4,6 +4,9 @@ import {useEffect,useMemo,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
 import AppShell from '@/components/app-shell';
 import type {Bill,Vendor} from '@/types/database';
+
+type BillListItem=Omit<Bill,'user_id'|'created_at'|'vendors'> & {vendors:{name:string}[]|null};
+type VendorListItem=Omit<Vendor,'user_id'|'created_at'>;
 import * as XLSX from 'xlsx';
 
 function due(billDate:string,days:number){
@@ -18,8 +21,8 @@ function dayDiff(date:string){
 const emptyForm={vendor_id:'',po_number:'',bill_number:'',bill_date:new Date().toISOString().slice(0,10),credit_period:30,amount:0,remarks:''};
 
 export default function Bills(){
-  const [bills,setBills]=useState<Bill[]>([]);
-  const [vendors,setVendors]=useState<Vendor[]>([]);
+  const [bills,setBills]=useState<BillListItem[]>([]);
+  const [vendors,setVendors]=useState<VendorListItem[]>([]);
   const [q,setQ]=useState('');
   const [filter,setFilter]=useState('all');
   const [form,setForm]=useState(emptyForm);
@@ -36,8 +39,8 @@ export default function Bills(){
     ]);
     if(billError) console.error(billError);
     if(vendorError) console.error(vendorError);
-    setBills((b||[]) as Bill[]);
-    setVendors((v||[]) as Vendor[]);
+    setBills((b||[]) as BillListItem[]);
+    setVendors((v||[]) as VendorListItem[]);
     setLoading(false);
   }
 
@@ -45,7 +48,8 @@ export default function Bills(){
 
   const visible=useMemo(()=>bills.filter(b=>{
     const d=dayDiff(b.due_date);
-    const text=(`${b.bill_number} ${b.po_number||''} ${(b as any).vendors?.name||''}`).toLowerCase();
+    const vendorName=b.vendors?.[0]?.name||'';
+    const text=(`${b.bill_number} ${b.po_number||''} ${vendorName}`).toLowerCase();
     const matches=text.includes(q.toLowerCase());
     const f=filter==='all'||filter==='paid'&&b.status==='paid'||filter==='overdue'&&b.status==='pending'&&d<0||filter==='upcoming'&&b.status==='pending'&&d>=0&&d<=7;
     return matches&&f;
@@ -72,7 +76,7 @@ export default function Bills(){
     finally{setSaving(false)}
   }
 
-  async function toggle(b:Bill){
+  async function toggle(b:BillListItem){
     if(actionId) return;
     setActionId(b.id);
     try{
@@ -190,7 +194,7 @@ export default function Bills(){
                     const cls=status==='Overdue'?'text-red-600':status==='Due Critical'?'text-amber-600':status==='Due Upcoming'?'text-yellow-600':status==='Paid'?'text-emerald-600':'text-slate-600';
                     return <tr className="table-row" key={b.id}>
                       <td className="p-4"><div className="font-medium text-slate-900">{b.bill_number}</div><div className="text-xs text-slate-500">{b.po_number||'No PO'}</div></td>
-                      <td className="p-4 text-slate-700">{(b as any).vendors?.name}</td>
+                      <td className="p-4 text-slate-700">{b.vendors?.[0]?.name||'—'}</td>
                       <td className="p-4"><div className="text-slate-700">{b.due_date}</div><div className={'text-xs font-semibold '+cls}>{status}</div></td>
                       <td className="p-4 text-right font-mono text-slate-900">₹{Number(b.amount).toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
                       <td className={'p-4 font-semibold '+cls}>{b.status}</td>
