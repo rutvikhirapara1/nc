@@ -118,7 +118,23 @@ export default async function Dashboard(){
           </div>
 
           <div className="mt-7 space-y-6">
-            [[label]]
+{[
+  ['0–30 days',pending.filter((b:any)=>{const d=-days(b.due_date);return d>=0&&d<=30})],
+  ['31–60 days',pending.filter((b:any)=>{const d=-days(b.due_date);return d>30&&d<=60})],
+  ['60+ days',pending.filter((b:any)=>-days(b.due_date)>60)]
+].map(([label,list]:any)=>{
+  const amount=sum(list);
+  const percent=Math.min(100,amount/Math.max(sum(pending),1)*100);
+  return <div key={label}>
+    <div className="flex items-center justify-between gap-3 text-sm">
+      <span className="font-medium text-slate-600">{label}</span>
+      <span className="font-semibold text-slate-900">{money(amount)}</span>
+    </div>
+    <div className="mt-2 h-2.5 rounded-full bg-slate-100">
+      <div className="h-2.5 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500" style={{width:percent+'%'}}/>
+    </div>
+  </div>;
+})}
           </div>
 
           <div className="mt-7 rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
