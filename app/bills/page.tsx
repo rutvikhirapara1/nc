@@ -8,7 +8,8 @@ import Modal from '@/components/modal';
 import type {Bill,Vendor} from '@/types/database';
 import * as XLSX from 'xlsx';
 
-type BillListItem=Omit<Bill,'user_id'|'created_at'|'vendors'> & {vendors:{name:string}[]|null};
+type BillVendor={name:string};
+type BillListItem=Omit<Bill,'user_id'|'created_at'|'vendors'> & {vendors:BillVendor|BillVendor[]|null};
 type VendorListItem=Omit<Vendor,'user_id'|'created_at'>;
 
 function due(billDate:string,days:number){
@@ -21,6 +22,10 @@ function dayDiff(date:string){
 }
 function money(n:number){
   return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:2}).format(n);
+}
+function vendorName(b:BillListItem){
+  const vendor=b.vendors;
+  return Array.isArray(vendor) ? (vendor[0]?.name||'') : (vendor?.name||'');
 }
 
 const emptyForm={vendor_id:'',po_number:'',bill_number:'',bill_date:new Date().toISOString().slice(0,10),credit_period:30,amount:0,remarks:''};
@@ -86,8 +91,7 @@ export default function Bills(){
 
   const visible=useMemo(()=>bills.filter(b=>{
     const d=dayDiff(b.due_date);
-    const vendorName=b.vendors?.[0]?.name||'';
-    const text=(`${b.bill_number} ${b.po_number||''} ${vendorName}`).toLowerCase();
+    const text=(`${b.bill_number} ${b.po_number||''} ${vendorName(b)}`).toLowerCase();
     const matches=text.includes(q.toLowerCase());
     const f=filter==='all'||filter==='paid'&&b.status==='paid'||filter==='overdue'&&b.status==='pending'&&d<0||filter==='upcoming'&&b.status==='pending'&&d>=0&&d<=7;
     return matches&&f;
@@ -165,7 +169,7 @@ export default function Bills(){
     setExporting(true);
     try{
       const data=visible.map(b=>({
-        Vendor:b.vendors?.[0]?.name||'',
+        Vendor:vendorName(b),
         Bill_Number:b.bill_number,
         PO_Number:b.po_number||'',
         Bill_Date:b.bill_date,
@@ -270,7 +274,7 @@ export default function Bills(){
                     const cls=status==='Paid'?'bg-emerald-50 text-emerald-700':danger?'bg-red-50 text-red-700':status==='Due Critical'?'bg-amber-50 text-amber-700':status==='Due Soon'?'bg-yellow-50 text-yellow-700':'bg-slate-100 text-slate-600';
                     return <tr key={b.id} className="table-row">
                       <td className="px-5 py-4"><p className="font-semibold text-slate-900">{b.bill_number}</p><p className="mt-0.5 text-xs text-slate-500">{b.po_number||'No PO'} · {b.bill_date}</p></td>
-                      <td className="px-5 py-4 text-slate-700">{b.vendors?.[0]?.name||'—'}</td>
+                      <td className="px-5 py-4 text-slate-700">{vendorName(b)||'—'}</td>
                       <td className="px-5 py-4"><div className="flex items-center gap-2 text-slate-700"><CalendarDays size={15} className="text-slate-400"/>{b.due_date}</div><span className={'mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold '+cls}>{status}</span></td>
                       <td className="px-5 py-4 text-right font-semibold text-slate-900">{money(Number(b.amount))}</td>
                       <td className="px-5 py-4"><span className={'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold '+(b.status==='paid'?'bg-emerald-50 text-emerald-700':'bg-indigo-50 text-indigo-700')}>{b.status==='paid'?'Paid':'Pending'}</span></td>
@@ -293,7 +297,7 @@ export default function Bills(){
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-slate-900">{b.bill_number}</p>
-                      <p className="mt-1 truncate text-xs text-slate-500">{b.vendors?.[0]?.name||'Vendor'} · {b.po_number||'No PO'}</p>
+                      <p className="mt-1 truncate text-xs text-slate-500">{vendorName(b)||'Vendor'} · {b.po_number||'No PO'}</p>
                     </div>
                     <span className={'shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold '+cls}>{status}</span>
                   </div>
