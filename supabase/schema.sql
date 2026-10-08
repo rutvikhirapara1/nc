@@ -5,3 +5,9 @@ alter table public.vendors enable row level security; alter table public.bills e
 drop policy if exists vendors_all on public.vendors; create policy vendors_all on public.vendors for all using(auth.uid()=user_id) with check(auth.uid()=user_id);
 drop policy if exists bills_all on public.bills; create policy bills_all on public.bills for all using(auth.uid()=user_id) with check(auth.uid()=user_id);
 create index if not exists bills_due_date_idx on public.bills(user_id,due_date); create index if not exists bills_vendor_idx on public.bills(vendor_id); create index if not exists bills_status_idx on public.bills(user_id,status);
+
+alter table public.bills
+  add column if not exists reminder_7_sent_at timestamptz,
+  add column if not exists reminder_3_sent_at timestamptz;
+create index if not exists bills_reminder_7_idx on public.bills(status,due_date,reminder_7_sent_at);
+create index if not exists bills_reminder_3_idx on public.bills(status,due_date,reminder_3_sent_at);
