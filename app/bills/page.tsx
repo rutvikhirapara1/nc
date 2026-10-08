@@ -347,8 +347,8 @@ export default function Bills(){
                   </div>
                   <div className="mt-4 grid grid-cols-3 gap-2">
                     <button type="button" className="btn btn-muted inline-flex items-center justify-center gap-1 text-xs" onClick={()=>openEdit(b)}><Pencil size={14}/> Edit</button>
-                    <button type="button" className="btn btn-primary text-xs" disabled={!!actionId} onClick={()=>toggle(b)}>{actionId===b.id?'…':b.status==='paid'?'Pending':'Mark paid'}</button>
-                    <button type="button" className="rounded-xl border border-red-100 bg-red-50 p-2 text-red-700 hover:bg-red-100 disabled:opacity-50" disabled={!!actionId} onClick={()=>remove(b.id)} aria-label="Delete bill"><Trash2 size={15} className="mx-auto"/></button>
+                    <button type="button" className="btn btn-primary text-xs" disabled={!!actionId} onClick={()=>requestToggle(b)}>{actionId===b.id?'…':b.status==='paid'?'Pending':'Mark paid'}</button>
+                    <button type="button" className="rounded-xl border border-red-100 bg-red-50 p-2 text-red-700 hover:bg-red-100 disabled:opacity-50" disabled={!!actionId} onClick={()=>requestDelete(b)} aria-label="Delete bill"><Trash2 size={15} className="mx-auto"/></button>
                   </div>
                 </article>;
               })}
