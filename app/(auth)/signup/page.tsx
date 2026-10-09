@@ -29,14 +29,14 @@ export default function Signup(){
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-slate-50 p-6">
-      <div className="w-full max-w-md">
+    <main className="relative min-h-screen overflow-hidden grid place-items-center bg-slate-50 p-6">
+      <div className="hero-orb one"/><div className="hero-orb two"/><div className="relative z-10 w-full max-w-md float-in">
         <div className="mb-5 text-center">
           <div className="text-2xl font-black tracking-tight text-slate-900">Vendor<span className="text-indigo-600">Pay</span></div>
           <p className="mt-1 text-sm text-slate-500">Payment control center</p>
         </div>
 
-        <div className="glass rounded-3xl p-8">
+        <div className="glass shimmer-border interactive-card rounded-[2rem] p-8">
           <p className="font-semibold text-indigo-600">GET STARTED</p>
           <h1 className="mt-2 text-3xl font-bold text-slate-900">Create your account</h1>
           <p className="mt-2 text-sm text-slate-500">Start managing vendors, bills and payment deadlines.</p>
