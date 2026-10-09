@@ -60,12 +60,43 @@ export default function Bills(){
     setLoading(true);
     const sb=await createClient();
     const [{data:b,error:billError},{data:v,error:vendorError}]=await Promise.all([
-      sb.from('bills').select('id,vendor_id,po_number,bill_number,bill_date,credit_period,amount,remarks,due_date,status,paid_date,attachment_path,bill_attachments(id,bill_id,user_id,file_name,file_path,content_type,size_bytes,created_at),vendors(name)').order('due_date',{ascending:true}),
+      sb.from('bills').select('id,vendor_id,po_number,bill_number,bill_date,credit_period,amount,remarks,due_date,status,paid_date,attachment_path,vendors(name)').order('due_date',{ascending:true}),
       sb.from('vendors').select('id,name,gst_number,contact_person,phone,email,default_credit_days,active').eq('active',true).order('name')
     ]);
+
     if(billError){console.error(billError);setError(billError.message)}
     if(vendorError){console.error(vendorError);setError(vendorError.message)}
-    setBills((b||[]) as BillListItem[]);
+
+    const baseBills=(b||[]) as BillListItem[];
+    const billIds=baseBills.map(bill=>bill.id);
+    let mergedBills=baseBills;
+
+    if(billIds.length){
+      const {data:attachmentRows,error:attachmentError}=await sb
+        .from('bill_attachments')
+        .select('id,bill_id,user_id,file_name,file_path,content_type,size_bytes,created_at')
+        .in('bill_id',billIds)
+        .order('created_at',{ascending:true});
+
+      if(attachmentError){
+        console.error(attachmentError);
+        setError(attachmentError.message);
+      }else{
+        const grouped=new Map<string,NonNullable<BillListItem['bill_attachments']>>();
+        for(const row of attachmentRows??[]){
+          const list=grouped.get(row.bill_id)??[];
+          list.push(row);
+          grouped.set(row.bill_id,list);
+        }
+
+        mergedBills=baseBills.map(bill=>({
+          ...bill,
+          bill_attachments:grouped.get(bill.id)??[]
+        }));
+      }
+    }
+
+    setBills(mergedBills);
     setVendors((v||[]) as VendorListItem[]);
     setLoading(false);
   }
