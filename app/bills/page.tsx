@@ -375,7 +375,7 @@ export default function Bills(){
 
   return (
     <AppShell>
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mb-6 reveal flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[.16em] text-indigo-600">Accounts payable</p>
           <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">Bills & Payments</h1>
@@ -409,7 +409,7 @@ export default function Bills(){
         </div>
       </div>
 
-      <section className="mt-5 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <section className="soft-card interactive-card mt-5 overflow-hidden rounded-3xl border border-slate-200/70 bg-white/80 shadow-sm">
         <div className="flex flex-col gap-3 border-b border-slate-100 p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="relative w-full lg:max-w-md">
@@ -495,7 +495,7 @@ export default function Bills(){
               {visible.map(b=>{
                 const status=statusFor(b);
                 const cls=status==='Paid'?'bg-emerald-50 text-emerald-700':status==='Overdue'?'bg-red-50 text-red-700':status==='Due Critical'?'bg-amber-50 text-amber-700':status==='Due Soon'?'bg-yellow-50 text-yellow-700':'bg-slate-100 text-slate-600';
-                return <article key={b.id} className="rounded-2xl border border-slate-200 p-4">
+                return <article key={b.id} className="interactive-card rounded-2xl border border-slate-200/70 bg-white/70 p-4 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-slate-900">{b.bill_number}</p>
