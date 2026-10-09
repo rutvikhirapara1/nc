@@ -107,7 +107,7 @@ export default function Vendors(){
 
   return (
     <AppShell>
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mb-6 reveal flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[.16em] text-indigo-600">Directory</p>
           <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">Vendors</h1>
@@ -119,7 +119,7 @@ export default function Vendors(){
       </div>
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="interactive-card soft-card rounded-2xl border border-slate-200/70 bg-white/80 p-4 shadow-sm">
           <div className="flex items-center gap-2 text-xs font-medium text-slate-500"><UsersRound size={15}/> Active vendors</div>
           <p className="mt-2 text-2xl font-bold text-slate-900">{filtered.length}</p>
         </div>
@@ -133,7 +133,7 @@ export default function Vendors(){
         </div>
       </div>
 
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <section className="soft-card interactive-card overflow-hidden rounded-3xl border border-slate-200/70 bg-white/80 shadow-sm">
         <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-semibold text-slate-900">Vendor directory</h2>
