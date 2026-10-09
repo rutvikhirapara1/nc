@@ -84,7 +84,7 @@ export default function Bills(){
   function openAdd(){
     setEditing(null);
     setForm({...emptyForm,bill_date:new Date().toISOString().slice(0,10)});
-    setAttachment(null);
+    setAttachments([]);
     setRemoveExistingAttachment(false);
     setError('');
     setShowForm(true);
@@ -282,6 +282,13 @@ export default function Bills(){
       const sb=await createClient();
 
       if(confirmAction.type==='delete'){
+        const {data:files}=await sb.from('bill_attachments').select('file_path').eq('bill_id',bill.id);
+        const paths=(files??[]).map((file:{file_path:string})=>file.file_path);
+        if(bill.attachment_path)paths.push(bill.attachment_path);
+        if(paths.length){
+          const {error:storageError}=await sb.storage.from('bill-attachments').remove(paths);
+          if(storageError)throw storageError;
+        }
         const {error}=await sb.from('bills').delete().eq('id',bill.id);
         if(error)throw error;
       }else{
@@ -434,10 +441,10 @@ export default function Bills(){
                       <td className="px-5 py-4"><div className="flex items-center gap-2 text-slate-700"><CalendarDays size={15} className="text-slate-400"/>{b.due_date}</div><span className={'mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold '+cls}>{status}</span></td>
                       <td className="px-5 py-4 text-right font-semibold text-slate-900">{money(Number(b.amount))}</td>
                       <td className="px-5 py-4">
-                        {b.attachment_path ? (
-                          <button type="button" className="btn btn-muted inline-flex items-center gap-1.5 text-xs" onClick={()=>viewBill(b)} disabled={viewingAttachmentId===b.id}>
-                            {viewingAttachmentId===b.id?<span className="spinner"/>:<ExternalLink size={14}/>}
-                            {viewingAttachmentId===b.id?'Opening…':'View Bill'}
+                        {(b.attachment_path || (b.bill_attachments?.length??0)>0) ? (
+                          <button type="button" className="btn btn-muted inline-flex items-center gap-1.5 text-xs" onClick={()=>viewBill(b)}>
+                            <ExternalLink size={14}/>
+                            View Bill{(b.bill_attachments?.length??0)>1 ? ` (${b.bill_attachments?.length})` : ''}
                           </button>
                         ) : <span className="text-xs text-slate-400">No file</span>}
                       </td>
