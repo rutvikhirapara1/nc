@@ -1,4 +1,5 @@
 export type Vendor={id:string;user_id:string;name:string;gst_number:string|null;contact_person:string|null;phone:string|null;email:string|null;default_credit_days:number;active:boolean;created_at:string};
+export type BillAttachment={id:string;bill_id:string;user_id:string;file_name:string;file_path:string;content_type:string|null;size_bytes:number|null;created_at:string};
 export type Bill={
   id:string;
   user_id:string;
@@ -15,4 +16,5 @@ export type Bill={
   attachment_path:string|null;
   created_at:string;
   vendors?:Pick<Vendor,'name'>;
+  bill_attachments?:BillAttachment[];
 };
