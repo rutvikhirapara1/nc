@@ -10,10 +10,10 @@ export default function StatCard({
   tone?:'normal'|'red'|'amber'|'green'
 }) {
   const styles = {
-    normal:'border-slate-200 bg-white',
-    red:'border-red-200 bg-red-50/50',
-    amber:'border-amber-200 bg-amber-50/50',
-    green:'border-emerald-200 bg-emerald-50/50',
+    normal:'border-slate-200/70 bg-white/80',
+    red:'border-red-200/70 bg-gradient-to-br from-white to-red-50/70',
+    amber:'border-amber-200/70 bg-gradient-to-br from-white to-amber-50/70',
+    green:'border-emerald-200/70 bg-gradient-to-br from-white to-emerald-50/70',
   }[tone];
 
   const valueColor = {
@@ -24,10 +24,11 @@ export default function StatCard({
   }[tone];
 
   return (
-    <div className={'rounded-2xl border p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md '+styles}>
-      <p className="text-sm font-medium text-slate-500">{label}</p>
-      <p className={'mt-2 text-2xl font-bold tracking-tight '+valueColor}>{value}</p>
-      {sub && <p className="mt-2 text-xs text-slate-500">{sub}</p>}
+    <div className={'interactive-card shimmer-border soft-card relative overflow-hidden rounded-3xl border p-5 '+styles}>
+      <div className="absolute -right-10 -top-10 h-24 w-24 rounded-full bg-indigo-100/40 blur-2xl"/>
+      <p className="relative text-sm font-semibold text-slate-500">{label}</p>
+      <p className={'relative mt-2 text-2xl font-black tracking-tight '+valueColor}>{value}</p>
+      {sub && <p className="relative mt-2 text-xs font-medium text-slate-500">{sub}</p>}
     </div>
   );
 }
