@@ -224,7 +224,7 @@ export default function Vendors(){
                   </div>
                   <div className="mt-4 flex gap-2 border-t border-slate-100 pt-3">
                     <button type="button" className="btn btn-muted flex flex-1 items-center justify-center gap-1.5 text-xs" onClick={()=>openEdit(v)}><Pencil size={14}/> Edit</button>
-                    <button type="button" className="btn flex flex-1 items-center justify-center gap-1.5 border border-red-100 bg-red-50 text-xs text-red-700" disabled={!!actionId} onClick={()=>archive(v.id)}><Archive size={14}/>{actionId===v.id?'…':'Archive'}</button>
+                    <button type="button" className="btn flex flex-1 items-center justify-center gap-1.5 border border-red-100 bg-red-50 text-xs text-red-700" disabled={!!actionId} onClick={()=>requestArchive(v)}><Archive size={14}/>{actionId===v.id?'…':'Archive'}</button>
                   </div>
                 </article>
               ))}
