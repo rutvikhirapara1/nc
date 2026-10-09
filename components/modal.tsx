@@ -32,9 +32,9 @@ export default function Modal({
   if(!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/35 p-0 backdrop-blur-sm sm:items-center sm:p-6" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/25 p-0 backdrop-blur-md animate-[reveal_.2s_ease-out] sm:items-center sm:p-6" onMouseDown={onClose}>
       <div
-        className={'max-h-[92vh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl '+(wide?'max-w-2xl':'max-w-xl')}
+        className={'max-h-[92vh] w-full overflow-y-auto rounded-t-3xl border border-white/70 bg-white/95 shadow-[0_30px_80px_rgba(15,23,42,.18)] backdrop-blur-xl animate-[float-in_.28s_cubic-bezier(.16,1,.3,1)] sm:rounded-3xl '+(wide?'max-w-2xl':'max-w-xl')}
         onMouseDown={e=>e.stopPropagation()}
       >
         <div className="sticky top-0 z-10 flex items-start justify-between border-b border-slate-100 bg-white/95 px-5 py-4 backdrop-blur sm:px-6">
