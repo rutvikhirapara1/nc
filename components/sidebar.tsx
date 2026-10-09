@@ -5,6 +5,7 @@ import {usePathname,useRouter} from 'next/navigation';
 import {LayoutDashboard,Store,ReceiptIndianRupee,LogOut,Menu,X,Sparkles} from 'lucide-react';
 import {useEffect,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
+import ConfirmDialog from './confirm-dialog';
 import type {SupabaseClient} from '@supabase/supabase-js';
 
 const links=[
@@ -19,6 +20,7 @@ export default function Sidebar(){
   const [supabase,setSupabase]=useState<SupabaseClient|null>(null);
   const [signingOut,setSigningOut]=useState(false);
   const [open,setOpen]=useState(false);
+  const [confirmSignout,setConfirmSignout]=useState(false);
 
   useEffect(()=>{
     let active=true;
@@ -81,7 +83,7 @@ export default function Sidebar(){
         </div>
         <Nav/>
         <div className="p-4">
-          <button type="button" onClick={handleSignOut} disabled={!supabase||signingOut}
+          <button type="button" onClick={()=>setConfirmSignout(true)} disabled={!supabase||signingOut}
             className="group flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white/70 px-3.5 py-3 text-sm font-semibold text-slate-500 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:text-slate-900 disabled:opacity-50">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-slate-50 text-slate-500 group-hover:bg-red-50 group-hover:text-red-600">
               {signingOut?<span className="spinner"/>:<LogOut size={18}/>}
@@ -126,6 +128,19 @@ export default function Sidebar(){
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        action={confirmSignout?{type:'signout'}:null}
+        loading={signingOut}
+        onCancel={()=>{if(!signingOut)setConfirmSignout(false)}}
+        onConfirm={async()=>{
+          try{
+            await handleSignOut();
+          } finally {
+            setConfirmSignout(false);
+          }
+        }}
+      />
     </>
   );
 }
