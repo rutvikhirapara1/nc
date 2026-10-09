@@ -5,6 +5,7 @@ import {Search,Plus,Building2,Phone,Mail,MapPin,MoreHorizontal,Pencil,Archive,Us
 import {createClient} from '@/lib/supabase/client';
 import AppShell from '@/components/app-shell';
 import Modal from '@/components/modal';
+import ConfirmDialog from '@/components/confirm-dialog';
 import type {Vendor} from '@/types/database';
 
 type VendorListItem=Omit<Vendor,'user_id'|'created_at'>;
@@ -20,6 +21,7 @@ export default function Vendors(){
   const [saving,setSaving]=useState(false);
   const [actionId,setActionId]=useState<string|null>(null);
   const [error,setError]=useState('');
+  const [confirmVendor,setConfirmVendor]=useState<VendorListItem|null>(null);
 
   async function load(){
     setLoading(true);
@@ -79,6 +81,7 @@ export default function Vendors(){
         if(error)throw error;
       }
       resetForm();
+      setConfirmVendor(null);
       await load();
     }catch(err){
       const message=err instanceof Error?err.message:'Unable to save vendor.';
@@ -86,8 +89,14 @@ export default function Vendors(){
     }finally{setSaving(false)}
   }
 
-  async function archive(id:string){
+  function requestArchive(v:VendorListItem){
     if(actionId)return;
+    setConfirmVendor(v);
+  }
+
+  async function archive(){
+    if(!confirmVendor||actionId)return;
+    const id=confirmVendor.id;
     setActionId(id);
     setError('');
     try{
@@ -187,7 +196,7 @@ export default function Vendors(){
                       <td className="px-5 py-4">
                         <div className="flex justify-end gap-2">
                           <button type="button" className="btn btn-muted inline-flex items-center gap-1.5 text-xs" onClick={()=>openEdit(v)}><Pencil size={14}/> Edit</button>
-                          <button type="button" className="btn inline-flex items-center gap-1.5 border border-red-100 bg-red-50 text-xs text-red-700 hover:bg-red-100" disabled={!!actionId} onClick={()=>archive(v.id)}>
+                          <button type="button" className="btn inline-flex items-center gap-1.5 border border-red-100 bg-red-50 text-xs text-red-700 hover:bg-red-100" disabled={!!actionId} onClick={()=>requestArchive(v)}>
                             <Archive size={14}/>{actionId===v.id?'Archiving…':'Archive'}
                           </button>
                         </div>
@@ -252,6 +261,13 @@ export default function Vendors(){
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        action={confirmVendor?{type:'archiveVendor',vendorName:confirmVendor.name}:null}
+        loading={!!actionId}
+        onCancel={()=>{if(!actionId)setConfirmVendor(null)}}
+        onConfirm={archive}
+      />
     </AppShell>
   );
 }
