@@ -101,7 +101,7 @@ export default function Bills(){
       amount:Number(b.amount),
       remarks:b.remarks||''
     });
-    setAttachment(null);
+    setAttachments([]);
     setRemoveExistingAttachment(false);
     setError('');
     setShowForm(true);
