@@ -39,7 +39,7 @@ export default async function Dashboard(){
 
   return (
     <AppShell>
-      <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mb-7 reveal flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[.16em] text-indigo-600">Overview</p>
           <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">Payment dashboard</h1>
@@ -56,7 +56,7 @@ export default async function Dashboard(){
       </div>
 
       <div className="mt-6 grid gap-5 xl:grid-cols-[1.65fr_.85fr]">
-        <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <section className="soft-card interactive-card overflow-hidden rounded-3xl border border-slate-200/70 bg-white/80 shadow-sm">
           <div className="border-b border-slate-100 p-5 sm:p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -108,7 +108,7 @@ export default async function Dashboard(){
           </div>
         </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <section className="soft-card interactive-card rounded-3xl border border-slate-200/70 bg-white/80 p-5 shadow-sm sm:p-6">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="font-bold text-slate-900">Aging snapshot</h2>
