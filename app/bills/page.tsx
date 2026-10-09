@@ -10,7 +10,7 @@ import type {Bill,Vendor} from '@/types/database';
 import * as XLSX from 'xlsx';
 
 type BillVendor={name:string};
-type BillListItem=Omit<Bill,'user_id'|'created_at'|'vendors'> & {vendors:BillVendor|BillVendor[]|null};
+type BillListItem=Omit<Bill,'user_id'|'created_at'|'vendors'> & {vendors:BillVendor|BillVendor[]|null;bill_attachments?:Bill['bill_attachments']};
 type BillForm={vendor_id:string;po_number:string;bill_number:string;bill_date:string;credit_period:number;amount:number;remarks:string};
 type VendorListItem=Omit<Vendor,'user_id'|'created_at'>;
 
@@ -39,9 +39,10 @@ export default function Bills(){
   const [vendorFilter,setVendorFilter]=useState('all');
   const [filter,setFilter]=useState('all');
   const [form,setForm]=useState<BillForm>(emptyForm);
-  const [attachment,setAttachment]=useState<File|null>(null);
+  const [attachments,setAttachments]=useState<File[]>([]);
   const [removeExistingAttachment,setRemoveExistingAttachment]=useState(false);
   const [viewingAttachmentId,setViewingAttachmentId]=useState<string|null>(null);
+  const [attachmentBill,setAttachmentBill]=useState<BillListItem|null>(null);
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
   const [actionId,setActionId]=useState<string|null>(null);
@@ -59,7 +60,7 @@ export default function Bills(){
     setLoading(true);
     const sb=await createClient();
     const [{data:b,error:billError},{data:v,error:vendorError}]=await Promise.all([
-      sb.from('bills').select('id,vendor_id,po_number,bill_number,bill_date,credit_period,amount,remarks,due_date,status,paid_date,attachment_path,vendors(name)').order('due_date',{ascending:true}),
+      sb.from('bills').select('id,vendor_id,po_number,bill_number,bill_date,credit_period,amount,remarks,due_date,status,paid_date,attachment_path,bill_attachments(id,bill_id,user_id,file_name,file_path,content_type,size_bytes,created_at),vendors(name)').order('due_date',{ascending:true}),
       sb.from('vendors').select('id,name,gst_number,contact_person,phone,email,default_credit_days,active').eq('active',true).order('name')
     ]);
     if(billError){console.error(billError);setError(billError.message)}
@@ -74,7 +75,7 @@ export default function Bills(){
   function resetForm(){
     setEditing(null);
     setForm({...emptyForm,bill_date:new Date().toISOString().slice(0,10)});
-    setAttachment(null);
+    setAttachments([]);
     setRemoveExistingAttachment(false);
     setShowForm(false);
     setError('');
@@ -125,15 +126,19 @@ export default function Bills(){
   async function save(e:React.FormEvent){
     e.preventDefault();
     if(saving)return;
-    if(attachment && attachment.size>10*1024*1024){
-      setError('Attachment must be 10 MB or smaller.');
+    if(attachments.some(file=>file.size>10*1024*1024)){
+      setError('Each attachment must be 10 MB or smaller.');
+      return;
+    }
+    if(attachments.length>10){
+      setError('You can upload a maximum of 10 attachments at a time.');
       return;
     }
 
     setSaving(true);
     setError('');
 
-    let uploadedPath:string|null=null;
+    const uploadedPaths:string[]=[];
 
     try{
       const sb=await createClient();
@@ -150,22 +155,6 @@ export default function Bills(){
           attachmentPath=null;
         }
 
-        if(attachment){
-          const safeName=attachment.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-          const newPath=`${user.id}/${editing}/${Date.now()}-${safeName}`;
-          const {error:uploadError}=await sb.storage.from('bill-attachments').upload(newPath,attachment,{
-            upsert:false,
-            contentType:attachment.type||'application/octet-stream'
-          });
-          if(uploadError)throw uploadError;
-          uploadedPath=newPath;
-          attachmentPath=newPath;
-
-          if(current?.attachment_path && current.attachment_path!==newPath){
-            await sb.storage.from('bill-attachments').remove([current.attachment_path]);
-          }
-        }
-
         const {error}=await sb.from('bills').update({
           ...form,
           due_date:due(form.bill_date,Number(form.credit_period)),
@@ -173,6 +162,31 @@ export default function Bills(){
         }).eq('id',editing);
 
         if(error)throw error;
+
+        for(const file of attachments){
+          const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+          const newPath=`${user.id}/${editing}/${Date.now()}-${crypto.randomUUID()}-${safeName}`;
+          const {error:uploadError}=await sb.storage.from('bill-attachments').upload(newPath,file,{
+            upsert:false,
+            contentType:file.type||'application/octet-stream'
+          });
+          if(uploadError)throw uploadError;
+
+          uploadedPaths.push(newPath);
+
+          const {error:rowError}=await sb.from('bill_attachments').insert({
+            bill_id:editing,
+            user_id:user.id,
+            file_name:file.name,
+            file_path:newPath,
+            content_type:file.type||null,
+            size_bytes:file.size
+          });
+          if(rowError){
+            await sb.storage.from('bill-attachments').remove([newPath]);
+            throw rowError;
+          }
+        }
       }else{
         const {data:newBill,error:insertError}=await sb.from('bills').insert({
           ...form,
@@ -184,24 +198,31 @@ export default function Bills(){
 
         if(insertError)throw insertError;
 
-        if(attachment){
-          const safeName=attachment.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-          const newPath=`${user.id}/${newBill.id}/${Date.now()}-${safeName}`;
-          const {error:uploadError}=await sb.storage.from('bill-attachments').upload(newPath,attachment,{
+        for(const file of attachments){
+          const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+          const newPath=`${user.id}/${newBill.id}/${Date.now()}-${crypto.randomUUID()}-${safeName}`;
+          const {error:uploadError}=await sb.storage.from('bill-attachments').upload(newPath,file,{
             upsert:false,
-            contentType:attachment.type||'application/octet-stream'
+            contentType:file.type||'application/octet-stream'
           });
           if(uploadError){
             await sb.from('bills').delete().eq('id',newBill.id);
             throw uploadError;
           }
-          uploadedPath=newPath;
+          uploadedPaths.push(newPath);
 
-          const {error:updateError}=await sb.from('bills').update({attachment_path:newPath}).eq('id',newBill.id);
-          if(updateError){
+          const {error:rowError}=await sb.from('bill_attachments').insert({
+            bill_id:newBill.id,
+            user_id:user.id,
+            file_name:file.name,
+            file_path:newPath,
+            content_type:file.type||null,
+            size_bytes:file.size
+          });
+          if(rowError){
             await sb.storage.from('bill-attachments').remove([newPath]);
             await sb.from('bills').delete().eq('id',newBill.id);
-            throw updateError;
+            throw rowError;
           }
         }
       }
@@ -209,8 +230,8 @@ export default function Bills(){
       resetForm();
       await load();
     }catch(err){
-      if(uploadedPath && editing){
-        // Keep the replacement file only when its database path was saved.
+      for(const path of uploadedPaths){
+        try{await (await createClient()).storage.from('bill-attachments').remove([path]);}catch{}
       }
       setError(err instanceof Error?err.message:'Unable to save bill.');
     }finally{
@@ -218,13 +239,16 @@ export default function Bills(){
     }
   }
 
-  async function viewBill(b:BillListItem){
-    if(!b.attachment_path || viewingAttachmentId)return;
-    setViewingAttachmentId(b.id);
+  function viewBill(b:BillListItem){
+    setAttachmentBill(b);
+  }
+
+  async function openAttachment(path:string){
+    setViewingAttachmentId(path);
     setError('');
     try{
       const sb=await createClient();
-      const {data,error}=await sb.storage.from('bill-attachments').createSignedUrl(b.attachment_path,300);
+      const {data,error}=await sb.storage.from('bill-attachments').createSignedUrl(path,300);
       if(error)throw error;
       window.open(data.signedUrl,'_blank','noopener,noreferrer');
     }catch(err){
@@ -448,8 +472,8 @@ export default function Bills(){
                   <div className="mt-4 grid grid-cols-3 gap-2">
                     <button type="button" className="btn btn-muted inline-flex items-center justify-center gap-1 text-xs" onClick={()=>openEdit(b)}><Pencil size={14}/> Edit</button>
                     <button type="button" className="btn btn-primary text-xs" disabled={!!actionId} onClick={()=>requestToggle(b)}>{actionId===b.id?'…':b.status==='paid'?'Pending':'Mark paid'}</button>
-                    <button type="button" className="rounded-xl border border-indigo-100 bg-indigo-50 p-2 text-indigo-700 disabled:opacity-50" disabled={!b.attachment_path||viewingAttachmentId===b.id} onClick={()=>viewBill(b)} aria-label="View bill">
-                      {viewingAttachmentId===b.id?<span className="spinner border-indigo-600 border-r-transparent"/>:<ExternalLink size={15} className="mx-auto"/>}
+                    <button type="button" className="rounded-xl border border-indigo-100 bg-indigo-50 p-2 text-indigo-700 disabled:opacity-50" disabled={!b.attachment_path && !(b.bill_attachments?.length)} onClick={()=>viewBill(b)} aria-label="View bill">
+                      <ExternalLink size={15} className="mx-auto"/>
                     </button>
                     <button type="button" className="rounded-xl border border-red-100 bg-red-50 p-2 text-red-700 hover:bg-red-100 disabled:opacity-50" disabled={!!actionId} onClick={()=>requestDelete(b)} aria-label="Delete bill"><Trash2 size={15} className="mx-auto"/></button>
                   </div>
@@ -471,73 +495,95 @@ export default function Bills(){
             <label><span className="field-label">Bill date *</span><input className="input mt-1.5" type="date" value={form.bill_date} onChange={e=>setForm({...form,bill_date:e.target.value})} required disabled={saving}/></label>
             <label><span className="field-label">Credit period</span><div className="relative mt-1.5"><input className="input pr-16" type="number" min="0" value={form.credit_period} onChange={e=>setForm({...form,credit_period:Number(e.target.value)})} disabled={saving}/><span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">days</span></div></label>
             <label><span className="field-label">Amount *</span><input className="input mt-1.5" type="number" min="0" step="0.01" placeholder="0.00" value={form.amount} onChange={e=>setForm({...form,amount:Number(e.target.value)})} required disabled={saving}/></label>            <label className="sm:col-span-2">
-              <span className="field-label">Bill attachment</span>
+              <span className="field-label">Bill attachments</span>
               <div className="mt-1.5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-600"><Paperclip size={18}/></div>
                     <div className="min-w-0">
-                      {attachment ? (
+                      {attachments.length>0 ? (
                         <>
-                          <p className="truncate text-sm font-semibold text-slate-900">{attachment.name}</p>
-                          <p className="text-xs text-slate-500">{(attachment.size/1024/1024).toFixed(2)} MB · New file</p>
+                          <p className="text-sm font-semibold text-slate-900">{attachments.length} new file{attachments.length===1?'':'s'} selected</p>
+                          <p className="text-xs text-slate-500">Up to 10 files · max 10 MB each</p>
                         </>
-                      ) : form && editing && bills.find(b=>b.id===editing)?.attachment_path && !removeExistingAttachment ? (
+                      ) : editing && (bills.find(b=>b.id===editing)?.bill_attachments?.length??0)>0 && !removeExistingAttachment ? (
                         <>
-                          <p className="text-sm font-semibold text-slate-900">Existing bill attached</p>
-                          <p className="text-xs text-slate-500">You can replace or remove it.</p>
+                          <p className="text-sm font-semibold text-slate-900">{bills.find(b=>b.id===editing)?.bill_attachments?.length} existing file{(bills.find(b=>b.id===editing)?.bill_attachments?.length??0)===1?'':'s'}</p>
+                          <p className="text-xs text-slate-500">Existing attachments are kept; new files will be added.</p>
                         </>
                       ) : (
                         <>
-                          <p className="text-sm font-semibold text-slate-900">Attach the bill PDF</p>
-                          <p className="text-xs text-slate-500">PDF, JPG, PNG or WEBP · max 10 MB</p>
+                          <p className="text-sm font-semibold text-slate-900">Attach bill documents</p>
+                          <p className="text-xs text-slate-500">PDF, JPG, PNG or WEBP · max 10 MB each</p>
                         </>
                       )}
                     </div>
                   </div>
                   <label className="btn btn-muted inline-flex cursor-pointer items-center justify-center gap-2 text-sm">
                     <Paperclip size={15}/>
-                    {attachment?'Replace file':'Choose file'}
+                    Select files
                     <input
                       type="file"
                       className="hidden"
+                      multiple
                       accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
                       disabled={saving}
                       onChange={e=>{
-                        const file=e.target.files?.[0]||null;
-                        if(file && file.size>10*1024*1024){
-                          setError('Attachment must be 10 MB or smaller.');
+                        const files=Array.from(e.target.files||[]);
+                        if(files.length>10){
+                          setError('You can upload a maximum of 10 attachments at a time.');
                           e.currentTarget.value='';
                           return;
                         }
-                        setAttachment(file);
+                        const invalid=files.find(file=>file.size>10*1024*1024);
+                        if(invalid){
+                          setError(`"${invalid.name}" is larger than 10 MB.`);
+                          e.currentTarget.value='';
+                          return;
+                        }
+                        setAttachments(files);
                         setRemoveExistingAttachment(false);
                         setError('');
                       }}
                     />
                   </label>
                 </div>
-                {((editing && bills.find(b=>b.id===editing)?.attachment_path && !attachment) || attachment) && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {editing && bills.find(b=>b.id===editing)?.attachment_path && !attachment && (
-                      <button type="button" className="btn btn-muted inline-flex items-center gap-2 text-xs" onClick={()=>viewBill(bills.find(b=>b.id===editing)!)} disabled={viewingAttachmentId===editing}>
-                        <ExternalLink size={14}/> View current bill
-                      </button>
-                    )}
-                    {editing && bills.find(b=>b.id===editing)?.attachment_path && (
-                      <button type="button" className="btn inline-flex items-center gap-2 border border-red-100 bg-red-50 text-xs text-red-700" onClick={()=>{setRemoveExistingAttachment(!removeExistingAttachment);setAttachment(null)}} disabled={saving}>
-                        <Trash2 size={14}/>{removeExistingAttachment?'Keep existing file':'Remove existing file'}
-                      </button>
-                    )}
-                    {attachment && (
-                      <button type="button" className="btn btn-muted inline-flex items-center gap-2 text-xs" onClick={()=>setAttachment(null)} disabled={saving}>
-                        <X size={14}/> Remove selected
-                      </button>
-                    )}
+
+                {attachments.length>0 && (
+                  <div className="mt-3 space-y-2">
+                    {attachments.map((file,index)=>(
+                      <div key={file.name+'-'+index} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <Paperclip size={14} className="shrink-0 text-slate-400"/>
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-semibold text-slate-700">{file.name}</p>
+                            <p className="text-[11px] text-slate-400">{(file.size/1024/1024).toFixed(2)} MB</p>
+                          </div>
+                        </div>
+                        <button type="button" className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600" onClick={()=>setAttachments(current=>current.filter((_,i)=>i!==index))} disabled={saving}>
+                          <X size={14}/>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {editing && (bills.find(b=>b.id===editing)?.bill_attachments?.length??0)>0 && (
+                  <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Existing attachments</p>
+                    <div className="mt-2 space-y-2">
+                      {bills.find(b=>b.id===editing)?.bill_attachments?.map(file=>(
+                        <div key={file.id} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
+                          <span className="min-w-0 truncate text-xs text-slate-700">{file.file_name}</span>
+                          <button type="button" className="btn btn-muted shrink-0 text-xs" onClick={()=>openAttachment(file.file_path)}><ExternalLink size={13}/> View</button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
             </label>
+
             <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4 sm:col-span-2">
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-indigo-600"><CalendarDays size={15}/> Calculated due date</div>
               <div className="mt-1 text-xl font-bold text-indigo-950">{due(form.bill_date,Number(form.credit_period))}</div>
@@ -553,6 +599,29 @@ export default function Bills(){
             </button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        open={!!attachmentBill}
+        onClose={()=>setAttachmentBill(null)}
+        title={attachmentBill ? `Bill attachments · ${attachmentBill.bill_number}` : 'Bill attachments'}
+        description="Open any attached document in a secure new tab."
+      >
+        <div className="space-y-2">
+          {attachmentBill?.attachment_path && !(attachmentBill.bill_attachments?.length) && (
+            <button type="button" className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left hover:bg-slate-50" onClick={()=>openAttachment(attachmentBill.attachment_path!)}>
+              <span className="flex min-w-0 items-center gap-3"><Paperclip size={16} className="shrink-0 text-indigo-600"/><span className="truncate text-sm font-medium text-slate-800">Bill attachment</span></span>
+              <ExternalLink size={15} className="shrink-0 text-slate-400"/>
+            </button>
+          )}
+          {(attachmentBill?.bill_attachments??[]).map(file=>(
+            <button key={file.id} type="button" className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left hover:bg-slate-50" onClick={()=>openAttachment(file.file_path)}>
+              <span className="flex min-w-0 items-center gap-3"><Paperclip size={16} className="shrink-0 text-indigo-600"/><span className="min-w-0"><span className="block truncate text-sm font-medium text-slate-800">{file.file_name}</span><span className="block text-xs text-slate-400">{file.size_bytes ? (file.size_bytes/1024/1024).toFixed(2)+' MB' : 'Attachment'}</span></span></span>
+              <ExternalLink size={15} className="shrink-0 text-slate-400"/>
+            </button>
+          ))}
+          {!attachmentBill?.attachment_path && !(attachmentBill?.bill_attachments?.length) && <div className="py-8 text-center text-sm text-slate-500">No attachments.</div>}
+        </div>
       </Modal>
 
       <ConfirmDialog
