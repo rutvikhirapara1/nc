@@ -1,12 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import {usePathname,useRouter} from 'next/navigation';
-import {LayoutDashboard,Store,ReceiptIndianRupee,LogOut,Menu,X,Sparkles} from 'lucide-react';
+import {usePathname} from 'next/navigation';
+import {LayoutDashboard,Store,ReceiptIndianRupee,Menu,X,Sparkles} from 'lucide-react';
 import {useEffect,useState} from 'react';
-import {createClient} from '@/lib/supabase/client';
-import ConfirmDialog from './confirm-dialog';
-import type {SupabaseClient} from '@supabase/supabase-js';
 
 const links=[
   ['/dashboard','Dashboard',LayoutDashboard],
@@ -16,28 +13,12 @@ const links=[
 
 export default function Sidebar(){
   const path=usePathname();
-  const router=useRouter();
   const [supabase,setSupabase]=useState<SupabaseClient|null>(null);
   const [signingOut,setSigningOut]=useState(false);
   const [open,setOpen]=useState(false);
   const [confirmSignout,setConfirmSignout]=useState(false);
 
-  useEffect(()=>{
-    let active=true;
-    createClient().then(client=>{if(active)setSupabase(client)}).catch(error=>console.error('Unable to initialize Supabase:',error));
-    return ()=>{active=false};
-  },[]);
-
   useEffect(()=>{setOpen(false)},[path]);
-
-  async function handleSignOut(){
-    if(!supabase||signingOut)return;
-    setSigningOut(true);
-    const {error}=await supabase.auth.signOut();
-    if(error){console.error('Sign out failed:',error);setSigningOut(false);return;}
-    router.replace('/login');
-    router.refresh();
-  }
 
   const Nav=({mobile=false}:{mobile?:boolean})=>(
     <nav className={mobile?'space-y-1 p-4':'flex-1 space-y-1 p-4'}>
@@ -82,15 +63,6 @@ export default function Sidebar(){
           </div>
         </div>
         <Nav/>
-        <div className="p-4">
-          <button type="button" onClick={()=>setConfirmSignout(true)} disabled={!supabase||signingOut}
-            className="group flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white/70 px-3.5 py-3 text-sm font-semibold text-slate-500 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:text-slate-900 disabled:opacity-50">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-slate-50 text-slate-500 group-hover:bg-red-50 group-hover:text-red-600">
-              {signingOut?<span className="spinner"/>:<LogOut size={18}/>}
-            </span>
-            {signingOut?'Signing out…':'Sign out'}
-          </button>
-        </div>
       </aside>
 
       <div className="sticky top-0 z-40 flex items-center justify-between border-b border-slate-200/70 bg-white/78 px-4 py-3 shadow-sm backdrop-blur-xl md:hidden">
@@ -118,13 +90,7 @@ export default function Sidebar(){
               <button type="button" onClick={()=>setOpen(false)} className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100"><X size={19}/></button>
             </div>
             <Nav mobile/>
-            <div className="border-t border-slate-100 p-4">
-              <button type="button" onClick={handleSignOut} disabled={!supabase||signingOut}
-                className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-600 shadow-sm disabled:opacity-50">
-                {signingOut?<span className="spinner"/>:<LogOut size={18}/>}
-                {signingOut?'Signing out…':'Sign out'}
-              </button>
-            </div>
+          </div>
           </div>
         </div>
       )}
