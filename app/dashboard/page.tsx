@@ -1,4 +1,3 @@
-import {redirect} from 'next/navigation';
 import {createClient} from '@/lib/supabase/server';
 import AppShell from '@/components/app-shell';
 import StatCard from '@/components/stat-card';
@@ -20,8 +19,6 @@ function urgencyMeta(status:string){
 
 export default async function Dashboard(){
   const supabase=await createClient();
-  const {data:{user}}=await supabase.auth.getUser();
-  if(!user)redirect('/login');
 
   const {data:bills}=await supabase
     .from('bills')
