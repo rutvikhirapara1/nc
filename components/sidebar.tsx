@@ -1,9 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import {usePathname} from 'next/navigation';
+import {usePathname,useState} from 'next/navigation';
 import {LayoutDashboard,Store,ReceiptIndianRupee,Menu,X,Sparkles} from 'lucide-react';
-import {useEffect,useState} from 'react';
 
 const links=[
   ['/dashboard','Dashboard',LayoutDashboard],
@@ -13,12 +12,7 @@ const links=[
 
 export default function Sidebar(){
   const path=usePathname();
-  const [supabase,setSupabase]=useState<SupabaseClient|null>(null);
-  const [signingOut,setSigningOut]=useState(false);
   const [open,setOpen]=useState(false);
-  const [confirmSignout,setConfirmSignout]=useState(false);
-
-  useEffect(()=>{setOpen(false)},[path]);
 
   const Nav=({mobile=false}:{mobile?:boolean})=>(
     <nav className={mobile?'space-y-1 p-4':'flex-1 space-y-1 p-4'}>
@@ -28,6 +22,7 @@ export default function Sidebar(){
           <Link
             key={href}
             href={href}
+            onClick={()=>setOpen(false)}
             className={'nav-item group flex items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold transition-all duration-200 '+
               (active
                 ? 'active bg-gradient-to-r from-indigo-50 to-cyan-50 text-indigo-700 shadow-sm'
@@ -91,22 +86,8 @@ export default function Sidebar(){
             </div>
             <Nav mobile/>
           </div>
-          </div>
         </div>
       )}
-
-      <ConfirmDialog
-        action={confirmSignout?{type:'signout'}:null}
-        loading={signingOut}
-        onCancel={()=>{if(!signingOut)setConfirmSignout(false)}}
-        onConfirm={async()=>{
-          try{
-            await handleSignOut();
-          } finally {
-            setConfirmSignout(false);
-          }
-        }}
-      />
     </>
   );
 }
