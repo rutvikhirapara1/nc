@@ -2,7 +2,7 @@
 
 import {useEffect,useMemo,useState} from 'react';
 import Link from 'next/link';
-import {ArrowLeft,Download,ExternalLink,Loader2,FileText,AlertCircle} from 'lucide-react';
+import {ArrowLeft,Download,ExternalLink,Loader2,FileText,AlertCircle,ZoomIn,ZoomOut,RotateCcw} from 'lucide-react';
 import {useSearchParams} from 'next/navigation';
 import {createClient} from '@/lib/supabase/client';
 
@@ -18,6 +18,7 @@ export default function AttachmentViewer(){
   const [loading,setLoading]=useState(true);
   const [downloading,setDownloading]=useState(false);
   const [error,setError]=useState('');
+  const [zoom,setZoom]=useState(1);
 
   const ext=useMemo(()=>extension(path),[path]);
   const isImage=['jpg','jpeg','png','webp','gif','bmp'].includes(ext);
@@ -94,6 +95,14 @@ export default function AttachmentViewer(){
             <p className="text-[11px] uppercase tracking-[.14em] text-slate-400">Bill attachment</p>
           </div>
 
+          {isImage&&url&&(
+            <div className="hidden items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-1 sm:flex">
+              <button type="button" onClick={()=>setZoom(z=>Math.max(.5,Math.round((z-.1)*10)/10))} className="rounded-lg p-2 text-white transition hover:bg-white/10" title="Zoom out" aria-label="Zoom out"><ZoomOut size={15}/></button>
+              <button type="button" onClick={()=>setZoom(1)} className="rounded-lg px-2 py-1 text-xs font-semibold text-slate-300 transition hover:bg-white/10" title="Reset zoom">{Math.round(zoom*100)}%</button>
+              <button type="button" onClick={()=>setZoom(z=>Math.min(3,Math.round((z+.1)*10)/10))} className="rounded-lg p-2 text-white transition hover:bg-white/10" title="Zoom in" aria-label="Zoom in"><ZoomIn size={15}/></button>
+              <button type="button" onClick={()=>setZoom(1)} className="rounded-lg p-2 text-slate-300 transition hover:bg-white/10" title="Reset zoom" aria-label="Reset zoom"><RotateCcw size={14}/></button>
+            </div>
+          )}
           <div className="flex shrink-0 gap-2">
             {url&&(
               <a
@@ -133,12 +142,42 @@ export default function AttachmentViewer(){
             <p className="text-sm">Loading attachment…</p>
           </div>
         ) : url&&isImage ? (
-          <div className="flex h-[calc(100vh-125px)] w-full items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/20 p-2 shadow-2xl sm:p-4">
-            <iframe
-              src={url}
-              title={fileName}
-              className="h-full w-full rounded-xl border-0 bg-white"
-            />
+          <div
+            className="relative h-[calc(100vh-125px)] w-full overflow-auto rounded-2xl border border-white/10 bg-black/20 p-2 shadow-2xl sm:p-4"
+            onWheel={event=>{
+              if(!event.ctrlKey)return;
+              event.preventDefault();
+              const direction=event.deltaY>0?-0.1:0.1;
+              setZoom(current=>Math.min(3,Math.max(.5,Math.round((current+direction)*10)/10)));
+            }}
+          >
+            <div className="absolute left-1/2 top-1/2 h-[96%] w-[96%] -translate-x-1/2 -translate-y-1/2">
+              <div
+                className="h-full w-full transition-transform duration-150 ease-out"
+                style={{transform:`scale(${zoom})`,transformOrigin:'center center'}}
+              >
+                <iframe
+                  src={url}
+                  title={fileName}
+                  className="h-full w-full rounded-xl border-0 bg-white"
+                />
+              </div>
+              <div
+                className="absolute inset-0 z-10"
+                onWheel={event=>{
+                  if(event.ctrlKey){
+                    event.preventDefault();
+                    const direction=event.deltaY>0?-0.1:0.1;
+                    setZoom(current=>Math.min(3,Math.max(.5,Math.round((current+direction)*10)/10)));
+                  }
+                }}
+                aria-hidden="true"
+              />
+            </div>
+
+            <div className="pointer-events-none fixed bottom-6 left-1/2 z-20 -translate-x-1/2 rounded-xl border border-white/10 bg-slate-950/85 px-3 py-2 text-xs font-medium text-slate-300 shadow-xl backdrop-blur-md">
+              Ctrl + mouse wheel to zoom · {Math.round(zoom*100)}%
+            </div>
           </div>
         ) : url&&isPdf ? (
           <iframe
