@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import {usePathname,useState} from 'next/navigation';
+import {usePathname} from 'next/navigation';
+import {useState} from 'react';
 import {LayoutDashboard,Store,ReceiptIndianRupee,Menu,X,Sparkles} from 'lucide-react';
 
 const links=[
