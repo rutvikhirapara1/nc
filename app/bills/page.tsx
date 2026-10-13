@@ -274,19 +274,8 @@ export default function Bills(){
     setAttachmentBill(b);
   }
 
-  async function openAttachment(path:string){
-    setViewingAttachmentId(path);
-    setError('');
-    try{
-      const sb=await createClient();
-      const {data,error}=await sb.storage.from('bill-attachments').createSignedUrl(path,300);
-      if(error)throw error;
-      window.open(data.signedUrl,'_blank','noopener,noreferrer');
-    }catch(err){
-      setError(err instanceof Error?err.message:'Unable to open bill attachment.');
-    }finally{
-      setViewingAttachmentId(null);
-    }
+  function openAttachment(path:string){
+    window.open(`/bills/attachment?path=${encodeURIComponent(path)}`,'_blank','noopener,noreferrer');
   }
 
   async function downloadAttachment(path:string){
