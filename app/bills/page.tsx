@@ -1,7 +1,7 @@
 'use client';
 
 import {useEffect,useMemo,useState} from 'react';
-import {ArrowDownToLine,CalendarDays,CheckCircle2,Clock3,FileText,Plus,Search,Trash2,Pencil,AlertTriangle,Paperclip,ExternalLink,X} from 'lucide-react';
+import {ArrowDownToLine,CalendarDays,CheckCircle2,Clock3,FileText,Plus,Search,Trash2,Pencil,AlertTriangle,Paperclip,ExternalLink,X,Download} from 'lucide-react';
 import {createClient} from '@/lib/supabase/client';
 import AppShell from '@/components/app-shell';
 import Modal from '@/components/modal';
@@ -284,6 +284,28 @@ export default function Bills(){
       window.open(data.signedUrl,'_blank','noopener,noreferrer');
     }catch(err){
       setError(err instanceof Error?err.message:'Unable to open bill attachment.');
+    }finally{
+      setViewingAttachmentId(null);
+    }
+  }
+
+  async function downloadAttachment(path:string){
+    setViewingAttachmentId(path+'-download');
+    setError('');
+    try{
+      const sb=await createClient();
+      const {data,error}=await sb.storage.from('bill-attachments').createSignedUrl(path,300,{download:true});
+      if(error)throw error;
+
+      const link=document.createElement('a');
+      link.href=data.signedUrl;
+      link.target='_blank';
+      link.rel='noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }catch(err){
+      setError(err instanceof Error?err.message:'Unable to download bill attachment.');
     }finally{
       setViewingAttachmentId(null);
     }
@@ -647,16 +669,32 @@ export default function Bills(){
       >
         <div className="space-y-2">
           {attachmentBill?.attachment_path && !(attachmentBill.bill_attachments?.length) && (
-            <button type="button" className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left hover:bg-slate-50" onClick={()=>openAttachment(attachmentBill.attachment_path!)}>
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3">
               <span className="flex min-w-0 items-center gap-3"><Paperclip size={16} className="shrink-0 text-indigo-600"/><span className="truncate text-sm font-medium text-slate-800">Bill attachment</span></span>
-              <ExternalLink size={15} className="shrink-0 text-slate-400"/>
-            </button>
+              <div className="flex shrink-0 gap-2">
+                <button type="button" className="btn btn-muted inline-flex items-center gap-1.5 text-xs" onClick={()=>openAttachment(attachmentBill.attachment_path!)}>
+                  <ExternalLink size={13}/> View
+                </button>
+                <button type="button" className="btn btn-primary inline-flex items-center gap-1.5 text-xs" onClick={()=>downloadAttachment(attachmentBill.attachment_path!)} disabled={viewingAttachmentId===attachmentBill.attachment_path+'-download'}>
+                  {viewingAttachmentId===attachmentBill.attachment_path+'-download'?<span className="spinner border-white border-r-transparent"/>:<Download size={13}/>}
+                  Download
+                </button>
+              </div>
+            </div>
           )}
           {(attachmentBill?.bill_attachments??[]).map(file=>(
-            <button key={file.id} type="button" className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left hover:bg-slate-50" onClick={()=>openAttachment(file.file_path)}>
+            <div key={file.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3">
               <span className="flex min-w-0 items-center gap-3"><Paperclip size={16} className="shrink-0 text-indigo-600"/><span className="min-w-0"><span className="block truncate text-sm font-medium text-slate-800">{file.file_name}</span><span className="block text-xs text-slate-400">{file.size_bytes ? (file.size_bytes/1024/1024).toFixed(2)+' MB' : 'Attachment'}</span></span></span>
-              <ExternalLink size={15} className="shrink-0 text-slate-400"/>
-            </button>
+              <div className="flex shrink-0 gap-2">
+                <button type="button" className="btn btn-muted inline-flex items-center gap-1.5 text-xs" onClick={()=>openAttachment(file.file_path)}>
+                  <ExternalLink size={13}/> View
+                </button>
+                <button type="button" className="btn btn-primary inline-flex items-center gap-1.5 text-xs" onClick={()=>downloadAttachment(file.file_path)} disabled={viewingAttachmentId===file.file_path+'-download'}>
+                  {viewingAttachmentId===file.file_path+'-download'?<span className="spinner border-white border-r-transparent"/>:<Download size={13}/>}
+                  Download
+                </button>
+              </div>
+            </div>
           ))}
           {!attachmentBill?.attachment_path && !(attachmentBill?.bill_attachments?.length) && <div className="py-8 text-center text-sm text-slate-500">No attachments.</div>}
         </div>
