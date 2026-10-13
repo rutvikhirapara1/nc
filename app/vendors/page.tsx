@@ -163,7 +163,12 @@ export default function Vendors(){
           </div>
         </div>
 
-        {error&&!showForm&&<div className="mx-4 mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+        {error&&!showForm&&(
+  <div className="mx-4 mt-4 flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between">
+    <span>{error}</span>
+    <button type="button" className="btn btn-muted shrink-0 text-xs" onClick={load} disabled={loading}>{loading?'Retrying…':'Retry'}</button>
+  </div>
+)}
 
         {loading ? (
           <div className="grid gap-3 p-4 md:grid-cols-2">
