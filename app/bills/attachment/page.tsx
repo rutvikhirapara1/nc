@@ -38,7 +38,7 @@ export default function AttachmentViewer(){
 
       try{
         const sb=await createClient();
-        const {data,error}=await sb.storage.from('bill-attachments').createSignedUrl(path,600);
+        const {data,error}=await sb.storage.from('bill-attachments').createSignedUrl(path,600,{download:false});
         if(error)throw error;
         if(active)setUrl(data.signedUrl);
       }catch(err){
@@ -133,11 +133,11 @@ export default function AttachmentViewer(){
             <p className="text-sm">Loading attachment…</p>
           </div>
         ) : url&&isImage ? (
-          <div className="w-full overflow-auto rounded-2xl border border-white/10 bg-black/20 p-2 shadow-2xl sm:p-4">
-            <img
+          <div className="flex h-[calc(100vh-125px)] w-full items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/20 p-2 shadow-2xl sm:p-4">
+            <iframe
               src={url}
-              alt={fileName}
-              className="mx-auto max-h-[calc(100vh-125px)] w-auto max-w-full rounded-xl object-contain"
+              title={fileName}
+              className="h-full w-full rounded-xl border-0 bg-white"
             />
           </div>
         ) : url&&isPdf ? (
