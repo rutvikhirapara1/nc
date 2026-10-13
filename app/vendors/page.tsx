@@ -25,13 +25,22 @@ export default function Vendors(){
 
   async function load(){
     setLoading(true);
-    const sb=await createClient();
-    const {data,error:loadError}=await sb.from('vendors')
-      .select('id,name,gst_number,contact_person,phone,email,default_credit_days,active')
-      .order('name');
-    if(loadError){console.error(loadError);setError(loadError.message)}
-    setVendors((data||[]) as VendorListItem[]);
-    setLoading(false);
+    setError('');
+    try{
+      const sb=await createClient();
+      const {data,error:loadError}=await sb.from('vendors')
+        .select('id,name,gst_number,contact_person,phone,email,default_credit_days,active')
+        .order('name');
+
+      if(loadError)throw loadError;
+      setVendors((data||[]) as VendorListItem[]);
+    }catch(err){
+      console.error('Vendor load failed:',err);
+      setVendors([]);
+      setError(err instanceof Error?err.message:'Unable to load vendors. Please try again.');
+    }finally{
+      setLoading(false);
+    }
   }
 
   useEffect(()=>{load()},[]);
